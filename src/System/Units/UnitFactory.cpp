@@ -31,7 +31,7 @@ std::shared_ptr<Actor> UnitFactory::SpawnSwordsman(uint32_t unitId, Vector2 posi
 	behaviourLogic->AddBehavior(moveAndAttackBhv, 1);
 
 	auto attack = std::make_shared<AttackComponent>();
-	auto attackCloseType = std::make_shared<CloseStrengthAttack>(actor, std::make_shared<InAttackRangeCondition>(0, 1, actor));
+	auto attackCloseType = std::make_shared<CloseStrengthAttack>(std::make_shared<InAttackRangeCondition>(0, 1, actor));
 	attack->AddAttack(attackCloseType);
 	actor->AddComponent(attack);
 
@@ -60,8 +60,8 @@ std::shared_ptr<Actor> UnitFactory::SpawnHunter(
 	behaviourLogic->AddBehavior(moveAndAttackBhv, 1);
 
 	auto attack = std::make_shared<AttackComponent>();
-	auto attackCloseType = std::make_shared<CloseStrengthAttack>(actor, std::make_shared<InAttackRangeCondition>(0, 1, actor));
-	auto attackRangeType = std::make_shared<RangeAgilityAttack>(actor, std::make_shared<InAttackRangeCondition>(1, range, actor));
+	auto attackCloseType = std::make_shared<CloseStrengthAttack>(std::make_shared<InAttackRangeCondition>(0, 1, actor));
+	auto attackRangeType = std::make_shared<RangeAgilityAttack>(std::make_shared<InAttackRangeCondition>(1, range, actor));
 	attack->AddAttack(attackCloseType);
 	attack->AddAttack(attackRangeType);
 	actor->AddComponent(attack);

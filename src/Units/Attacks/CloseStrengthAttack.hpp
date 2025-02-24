@@ -11,8 +11,8 @@
 class CloseStrengthAttack : public AttackType
 {
 public:
-	explicit CloseStrengthAttack(std::shared_ptr<Actor>& owner, std::shared_ptr<InAttackRangeCondition> cond) :
-			AttackType(owner, StatType::Strength, std::move(cond))
+	explicit CloseStrengthAttack(std::shared_ptr<InAttackRangeCondition> cond) :
+			AttackType(StatType::Strength, std::move(cond))
 	{}
 };
 

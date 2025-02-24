@@ -15,17 +15,17 @@
 
 class AttackType : public OwnedBy
 {
+	friend class AttackComponent;
 protected:
 	StatType basedStat;
 	std::shared_ptr<Condition> condition;
 	std::shared_ptr<StatsComponent> statsComponent;
 
 public:
-	AttackType(std::shared_ptr<Actor>& owner, StatType stat, std::shared_ptr<Condition> cond) :
+	AttackType(StatType stat, std::shared_ptr<Condition> cond) :
 			basedStat(stat),
 			condition(std::move(cond))
 	{
-		SetOwner(owner);
 		statsComponent = GetOwner()->GetComponent<StatsComponent>();
 	}
 

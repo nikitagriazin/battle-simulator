@@ -11,8 +11,8 @@
 class RangeAgilityAttack : public AttackType
 {
 public:
-	explicit RangeAgilityAttack(std::shared_ptr<Actor>& owner, std::shared_ptr<InAttackRangeCondition> cond) :
-			AttackType(owner, StatType::Agility, std::move(cond))
+	explicit RangeAgilityAttack(std::shared_ptr<InAttackRangeCondition> cond) :
+			AttackType(StatType::Agility, std::move(cond))
 	{}
 };
 

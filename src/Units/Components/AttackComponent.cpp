@@ -6,14 +6,17 @@
 
 void AttackComponent::AddAttack(const std::shared_ptr<AttackType>& attack)
 {
-	if (attack == nullptr) {
+	if (attack == nullptr)
+	{
 		return;
 	}
 
+	attack->SetOwner(GetOwner());
 	attacks.push_back(attack);
 }
 
-std::pair<int, std::shared_ptr<AttackType>> AttackComponent::ChooseMostPowerfulAttack(const std::shared_ptr<Actor>& target)
+std::pair<int, std::shared_ptr<AttackType>> AttackComponent::ChooseMostPowerfulAttack(
+	const std::shared_ptr<Actor>& target)
 {
 	std::pair<int, std::shared_ptr<AttackType>> mostPowerfulAttack(0, nullptr);
 	for (const auto& attack : attacks)
