@@ -24,7 +24,9 @@ private:
 	std::shared_ptr<DamageProcessor> damageController;
 	std::shared_ptr<UnitRegistry> unitRegistry;
 	std::shared_ptr<GameCommandQueue> commandQueue;
+
 	std::unordered_map<uint32_t, std::shared_ptr<GameObject>> objects;
+	std::vector<uint32_t> insertionOrder;
 
 public:
 	explicit Simulation(

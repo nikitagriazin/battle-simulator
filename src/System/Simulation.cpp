@@ -20,6 +20,7 @@ void Simulation::AddObject(const uint32_t key, const std::shared_ptr<GameObject>
 {
 	obj->Initialize();
 	objects[key] = obj;
+	insertionOrder.push_back(key);
 
 	if (gameState->GetIsActive())
 	{
@@ -55,9 +56,10 @@ void Simulation::Process()
 	while (unitRegistry->IsUnitsProcessable())
 	{
 		gameState->Tick();
-		for (auto& gameObject : objects)
+		for (auto key : insertionOrder)
 		{
-			gameObject.second->Tick(gameState->GetTick());
+			auto gameObject = objects[key];
+			gameObject->Tick(gameState->GetTick());
 		}
 		damageController->ApplyDamage();
 		commandQueue->ProcessCommands();
