@@ -1,0 +1,389 @@
+@startuml
+
+' ==== Core (ядро системы) ====
+class GameObject {
+    +uint32_t id
+    +GameObject(uint32_t id)
+    +~GameObject()
+    +{abstract} void Initialize()
+    +{abstract} void Activate()
+    +{abstract} void Tick(uint32_t tick)
+    +{abstract} void Deactivate()
+    +{abstract} void Terminate()
+}
+
+class Actor extends GameObject {
+    -std::unordered_map<std::type_index, std::shared_ptr<ActorComponent>> components
+    -bool active = true
+
+    +Actor(uint32_t id)
+    +~Actor()
+
+    +void Initialize() override
+    +void Activate() override
+    +void Tick(uint32_t tick) override
+    +void Deactivate() override
+    +void Terminate() override
+
+    +std::shared_ptr<T> GetComponent<T>()
+    +void AddComponent(const std::shared_ptr<ActorComponent>& component)
+    +uint32_t GetId()
+}
+Actor *-- ActorComponent : "компоненты"
+
+class ActorComponent extends OwnedBy {
+    +~ActorComponent()
+
+    +void Initialize()
+    +void Tick(uint32_t tick)
+    +void Activate()
+    +void Deactivate()
+    +void Terminate()
+}
+
+class Condition {
+    +~Condition()  // Виртуальный деструктор
+    +{abstract} bool isPassed(std::any argument) const
+}
+
+class OwnedBy {
+    -std::shared_ptr<Actor> owner
+    +virtual ~OwnedBy()
+    +std::shared_ptr<Actor> GetOwner() const
+    #void SetOwner(const std::shared_ptr<Actor>& newOwner)
+}
+
+' ==== Utility (вспомогательные классы) ====
+class Vector2 {
+    +uint32_t x
+    +uint32_t y
+
+    +Vector2(uint32_t x = 0, uint32_t y = 0)
+
+    +bool operator==(const Vector2& other) const
+    +Vector2 operator+(const Vector2& other) const
+    +Vector2 operator-(const Vector2& other) const
+    +void Set(uint32_t new_x, uint32_t new_y)
+
+    +static uint32_t DistanceSquared(const Vector2& a, const Vector2& b)
+    +static double Distance(const Vector2& a, const Vector2& b)
+
+    +friend std::ostream& operator<<(std::ostream& os, const Vector2& vec)
+}
+
+class ServiceLocator {
+    -std::unordered_map<std::type_index, std::function<std::shared_ptr<void>()>> factories
+    -std::unordered_map<std::type_index, std::shared_ptr<void>> instances
+
+    -ServiceLocator()
+    +static ServiceLocator& GetInstance()
+
+    -ServiceLocator(const ServiceLocator&) = delete
+    -ServiceLocator& operator=(const ServiceLocator&) = delete
+    -ServiceLocator(ServiceLocator&&) = delete
+    -ServiceLocator& operator=(ServiceLocator&&) = delete
+
+    +void RegisterType<T, Args...>(Args&&... args)
+    +void RegisterInstance<T>(std::shared_ptr<T> instance)
+    +std::shared_ptr<T> Resolve<T>()
+}
+
+' ==== Units (юниты и их функционал) ====
+
+enum StatType {
+    Strength
+    Agility
+    Power
+    Spirit
+    Range
+}
+
+class AttackType extends OwnedBy {
+    #StatType basedStat
+    #std::shared_ptr<Condition> condition
+    #std::shared_ptr<StatsComponent> statsComponent
+
+    +AttackType(StatType stat, std::shared_ptr<Condition> cond)
+    +~AttackType()
+    +int Damage()
+    +bool CanAttack(const std::shared_ptr<Actor>& target) const
+}
+
+class CloseStrengthAttack extends AttackType {
+    +CloseStrengthAttack(std::shared_ptr<InAttackRangeCondition> cond)
+}
+
+class RangeAgilityAttack extends AttackType {
+    +RangeAgilityAttack(std::shared_ptr<InAttackRangeCondition> cond)
+}
+
+AttackType ..> StatsComponent : "использует"
+AttackType ..> StatType : "использует"
+AttackType ..> Condition : "использует"
+
+class AttackComponent  extends ActorComponent {
+    -std::vector<std::shared_ptr<AttackType>> attacks
+
+    +void AddAttack(const std::shared_ptr<AttackType>& attack)
+    +std::pair<int, std::shared_ptr<AttackType>> ChooseMostPowerfulAttack(const std::shared_ptr<Actor>& target)
+}
+
+class BehaviourLogicComponent extends ActorComponent {
+    -std::shared_ptr<Behaviour> currentBehavior
+    -std::map<int, std::shared_ptr<Behaviour>, std::greater<>> behaviorPriorities
+    -bool isNoAvailableActions
+    -std::shared_ptr<HealthComponent> healthComponent
+
+    +BehaviourLogicComponent()
+    +void AddBehavior(const std::shared_ptr<Behaviour>& behaviour, int priority)
+    +void Activate() override
+    +void Tick(uint32_t tick) override
+    +void SetIsNoAvailableActions(bool _isNoAvailableActions)
+    +bool IsNoAvailableActions()
+}
+
+class HealthComponent extends ActorComponent {
+    -uint32_t currentHP
+    -uint32_t maxHP
+
+    +HealthComponent(uint32_t hp)
+    +void ApplyDamage(int damage)
+    +bool IsAlive() const
+    +uint32_t GetCurrentHP() const
+    +uint32_t GetMaxHP() const
+}
+
+class PositionComponent extends ActorComponent {
+    -Vector2 currentPosition
+    -Vector2 targetPosition
+    -bool occupiesSlot
+    -std::shared_ptr<Map> map
+    -std::queue<Vector2> path
+
+    +PositionComponent(bool isOccupiesSlot, Vector2 position)
+    +void SetPosition(Vector2 newPosition)
+    +Vector2 GetPosition()
+    +Vector2 GetTargetPosition()
+    +bool IsTargetAchieved()
+    +bool IsOccupiesSlot() const
+    +void MarchTo(Vector2 position)
+    +void MoveToNextPosition()
+    -void BuildPath()
+}
+
+PositionComponent ..> Vector2 : "использует"
+
+class StatsComponent extends ActorComponent {
+    -std::unordered_map<StatType, uint32_t> stats
+
+    +void SetStat(StatType key, uint32_t value)
+    +uint32_t GetStat(StatType key, uint32_t default_value = 0) const
+}
+
+abstract class Behaviour extends OwnedBy {
+    #std::shared_ptr<Condition> condition
+
+    +Behaviour(std::shared_ptr<Condition> cond)
+    +~Behaviour()
+
+    +void Initialize()
+    +void Tick(uint32_t tick)
+    +void Terminate()
+    +bool CanRun() const
+}
+
+Behaviour <-- BehaviourLogicComponent : "друг"
+Behaviour ..> Condition : "использует"
+
+class MoveAndAttackBehaviour extends Behaviour {
+    -std::shared_ptr<DamageProcessor> damageController
+    -std::shared_ptr<UnitRegistry> unitRegistry
+    -std::shared_ptr<AttackComponent> attackComponent
+    -std::shared_ptr<PositionComponent> positionComponent
+    -std::shared_ptr<BehaviourLogicComponent> logicComponent
+
+    +MoveAndAttackBehaviour(std::shared_ptr<Condition> cond)
+    +void Initialize() override
+    +void Tick(uint32_t tick) override
+}
+
+MoveAndAttackBehaviour --|> Behaviour
+
+MoveAndAttackBehaviour ..> DamageProcessor : "использует"
+MoveAndAttackBehaviour ..> UnitRegistry : "использует"
+MoveAndAttackBehaviour ..> AttackComponent : "использует"
+MoveAndAttackBehaviour ..> PositionComponent : "использует"
+MoveAndAttackBehaviour ..> BehaviourLogicComponent : "использует"
+
+BehaviourLogicComponent *-- Behaviour
+
+' ==== System (функционал системы) ====
+
+class Map {
+    -uint32_t width
+    -uint32_t height
+    -std::vector<std::vector<char>> grid
+    -bool isInited
+
+    +Map()
+    +void InitMap(uint32_t w, uint32_t h)
+    +void AddObstacle(uint32_t x, uint32_t y)
+    +bool IsWithinBounds(const Vector2& pos) const
+    +bool IsCellOccupied(const Vector2& pos) const
+    +void OccupyCell(const Vector2& pos, char symbol)
+    +void FreeCell(const Vector2& pos)
+}
+
+class Simulation {
+    -std::shared_ptr<GameState> gameState
+    -std::shared_ptr<DamageProcessor> damageController
+    -std::shared_ptr<UnitRegistry> unitRegistry
+    -std::shared_ptr<GameCommandQueue> commandQueue
+    -std::unordered_map<uint32_t, std::shared_ptr<GameObject>> objects
+    -std::vector<uint32_t> insertionOrder
+
+    +Simulation(std::shared_ptr<GameState>& gameState,
+                std::shared_ptr<DamageProcessor>& damageController,
+                std::shared_ptr<UnitRegistry>& unitRegistry,
+                std::shared_ptr<GameCommandQueue>& commandQueue)
+
+    +void AddObject(uint32_t key, const std::shared_ptr<GameObject>& obj)
+    +bool IsIdRegistered(uint32_t key)
+    +void Run()
+
+    +std::shared_ptr<T> GetObjectAs<T>(uint32_t id)
+
+    -void Activate()
+    -void Process()
+    -void Deactivate()
+    -void Terminate()
+}
+
+Simulation ..> GameState : "использует"
+Simulation ..> DamageProcessor : "использует"
+Simulation ..> UnitRegistry : "использует"
+Simulation ..> GameCommandQueue : "использует"
+Simulation ..> GameObject : "хранит"
+
+class GameState {
+    -bool isActive
+    -uint32_t tick
+
+    +GameState()
+    +bool GetIsActive() const
+    +uint32_t GetTick() const
+
+    -void SetIsActive(bool active)
+    -void Tick()
+}
+
+GameState <-- Simulation : "друг"
+
+class UnitFactory {
+    +static std::shared_ptr<Actor> SpawnSwordsman(uint32_t unitId, Vector2 position, uint32_t hp, uint32_t strength)
+    +static std::shared_ptr<Actor> SpawnHunter(uint32_t unitId, Vector2 position, uint32_t hp, uint32_t agility, uint32_t strength, uint32_t range)
+}
+
+UnitFactory ..> Actor : "создаёт"
+UnitFactory ..> Vector2 : "использует"
+
+struct UnitRegistryEntry {
+    +uint32_t id
+    +std::weak_ptr<Actor> actor
+    +std::weak_ptr<PositionComponent> positionComponent
+}
+
+class UnitRegistry {
+    -std::vector<UnitRegistryEntry> registry
+
+    +UnitRegistry()
+    +void OnUnitAdded(const std::shared_ptr<Actor>& actor)
+    +std::vector<std::shared_ptr<Actor>> GetPossibleTargets(std::shared_ptr<Actor>& unit)
+    +bool IsUnitsProcessable()
+}
+
+UnitRegistry ..> UnitRegistryEntry : "хранит"
+UnitRegistryEntry ..> Actor : "содержит"
+UnitRegistryEntry ..> PositionComponent : "содержит"
+
+UnitFactory ..> UnitRegistry : "использует"
+
+struct DamageEvent {
+    +std::weak_ptr<Actor> attacker
+    +std::weak_ptr<Actor> target
+    +int damage
+}
+
+class DamageProcessor {
+    -std::queue<DamageEvent> events
+
+    +DamageProcessor()
+    +void RegisterDamage(const DamageEvent& event)
+    +void ApplyDamage()
+}
+
+DamageProcessor ..> DamageEvent : "хранит очередь"
+DamageEvent ..> Actor : "содержит ссылки на"
+
+class CommandHandler<T> {
+    +{abstract} void Handle(T& command)
+    +~CommandHandler()
+}
+
+class CreateMapHandler extends CommandHandler {
+    +void Handle(sw::io::CreateMap& command) override
+}
+
+class GameCommandMediator {
+    -CreateMapHandler createMapHandler
+    -SpawnSwordsmanHandler spawnSwordsmanHandler
+    -SpawnHunterHandler spawnHunterHandler
+    -UnitMarchHandler actorMarchHandler
+
+    +void ProcessCreateMapCommand(sw::io::CreateMap& command)
+    +void ProcessSpawnSwordsmanCommand(sw::io::SpawnSwordsman& command)
+    +void ProcessSpawnHunterCommand(sw::io::SpawnHunter& command)
+    +void ProcessMarchCommand(sw::io::March& command)
+}
+
+class GameCommandQueue {
+    -std::queue<CommandVariant> commandQueue
+    -std::mutex queueMutex
+    -std::shared_ptr<GameCommandMediator> mediator
+
+    +GameCommandQueue(std::shared_ptr<GameCommandMediator>& mediator)
+    +void PushCommand(CommandVariant command)
+    +void ProcessCommands()
+}
+
+class SpawnSwordsmanHandler extends CommandHandler {
+    +void Handle(sw::io::SpawnSwordsman& command) override
+}
+
+class SpawnHunterHandler extends CommandHandler {
+    +void Handle(sw::io::SpawnHunter& command) override
+}
+
+class UnitMarchHandler extends CommandHandler {
+    +void Handle(sw::io::March& command) override
+}
+
+GameCommandMediator ..> CreateMapHandler : "содержит"
+GameCommandMediator ..> SpawnSwordsmanHandler : "содержит"
+GameCommandMediator ..> SpawnHunterHandler : "содержит"
+GameCommandMediator ..> UnitMarchHandler : "содержит"
+
+GameCommandQueue ..> GameCommandMediator : "взаимодействует с"
+
+SpawnSwordsmanHandler ..> UnitFactory : "использует"
+SpawnHunterHandler ..> UnitFactory : "использует"
+CreateMapHandler ..> Map : "использует"
+UnitMarchHandler ..> PositionComponent : "использует"
+
+' ==== Связи между модулями ====
+
+
+GameCommandQueue --> Simulation : "взаимодействует"
+Map ..> Vector2 : "использует"
+
+@enduml
